@@ -403,8 +403,6 @@ sudo apt-get -y install cusparselt-cuda-12
 > 일반적인 `pip install torch torchvision`을 사용하지 않습니다.  
 > Jetson의 aarch64 / CUDA 12.6 환경에 맞는 wheel을 사용합니다.
 
-교수자가 다음 두 wheel 파일을 사전에 제공합니다.
-
 ```text
 wget https://github.com/davidl-nv/torch/raw/refs/heads/main/torch-2.8/torch-2.8.0-cp310-cp310-linux_aarch64.whl
 wget https://github.com/davidl-nv/torch/raw/refs/heads/main/torch-2.8/torchvision-0.23.0-cp310-cp310-linux_aarch64.whl
