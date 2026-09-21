@@ -1294,8 +1294,6 @@ python pareto_check.py
 
 ---
 
-# Part G. 결과 해석 및 토론
-
 ## 18. 결과 해석
 
 학생들은 생성된 다음 파일을 확인합니다.
@@ -1321,18 +1319,6 @@ pareto_accuracy_latency.png
 - Latency가 높기 때문에
 
 지배당하는(dominated) 모델이 되도록 예시값을 구성했습니다.
-
----
-
-## 19. 토론 질문
-
-1. 가장 정확한 모델이 항상 배포에 가장 적합한가?
-2. 가장 빠른 모델이 항상 좋은 모델인가?
-3. 실시간 AIoT 장치에서는 Accuracy와 Latency 중 어느 쪽을 더 중요하게 봐야 하는가?
-4. 어떤 모델이 Pareto Front에 포함되는가?
-5. dominated model을 실제 배포 후보에서 제외해도 되는가?
-6. 허용 latency가 1 ms 이하라면 어떤 모델을 선택할 수 있는가?
-7. Accuracy가 최소 97% 이상이어야 한다면 어떤 후보가 남는가?
 
 ---
 
@@ -1479,22 +1465,3 @@ nvidia-smi
 그리고 Jetson 환경에 맞는 PyTorch wheel이 설치되었는지 확인합니다.
 
 ---
-
-# 빠른 점검표
-
-- [ ] Colab에서 TinyMLP 학습
-- [ ] `TinyMLP.pth` 다운로드
-- [ ] Jetson `weights/` 디렉터리로 파일 전송
-- [ ] `week4_env` 활성화
-- [ ] NumPy 1.26.4 확인
-- [ ] Jetson용 PyTorch / torchvision 설치 확인
-- [ ] `python check_gpu.py` 성공
-- [ ] CUDA matrix multiplication 성공
-- [ ] `python latency_toy.py` 성공
-- [ ] TinyMLP weight 로딩 성공
-- [ ] TinyMLP Accuracy 측정
-- [ ] TinyMLP single-image latency 측정
-- [ ] Demo 모델과 함께 Pareto 분석
-- [ ] `pareto_results.csv` 생성 확인
-- [ ] `pareto_accuracy_latency.png` 생성 확인
-- [ ] Pareto Front 해석 및 토론
