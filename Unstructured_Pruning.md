@@ -130,10 +130,14 @@ pip install numpy==1.26.4
 
 ### 5.3 PyTorch와 실습 패키지 설치
 
-아래 `<JETSON_TORCH_WHEEL>`은 교수자가 제공하거나 장비에 맞게 준비한 Jetson용 wheel 파일명으로 바꿉니다.
+Jetson에서는 일반 `pip install torch`를 사용하지 않습니다.
+반드시 현재 JetPack/CUDA 및 Python 버전과 호환되는
+**Jetson용 NVIDIA PyTorch wheel**을 사용합니다.
+
+교수자가 제공한 wheel 파일이 현재 디렉터리에 있다고 가정합니다.
 
 ```bash
-pip install ./<JETSON_TORCH_WHEEL>
+pip install ./torch-XXXXXXXX-linux_aarch64.whl
 pip install pandas matplotlib
 ```
 
