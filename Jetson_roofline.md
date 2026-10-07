@@ -16,24 +16,24 @@
 
 Roofline Model은 다음 식으로 표현된다.
 
-\[
+$$
 P(AI)=\min(P_{\mathrm{peak}}, BW_{\mathrm{mem}}\times AI)
-\]
+$$
 
 여기서
 
-- \(P\): 실제 성능 [FLOP/s]
-- \(P_{\mathrm{peak}}\): 최대 compute throughput [FLOP/s]
-- \(BW_{\mathrm{mem}}\): memory bandwidth [Byte/s]
-- \(AI\): arithmetic intensity [FLOP/Byte]
+- $P$: 실제 성능 [FLOP/s]
+- $P_{\mathrm{peak}}$: 최대 compute throughput [FLOP/s]
+- $BW_{\mathrm{mem}}$: memory bandwidth [Byte/s]
+- $AI$: arithmetic intensity [FLOP/Byte]
 
 이다.
 
 Arithmetic Intensity는
 
-\[
+$$
 AI=\frac{\text{FLOPs}}{\text{Memory Traffic [Byte]}}
-\]
+$$
 
 로 정의한다.
 
@@ -160,11 +160,11 @@ Ridge point : 21.22 FLOP/Byte
 
 초기에는 이 값을 empirical roof로 사용하였다.
 
-\[
+$$
 P_{\mathrm{empirical}}
 =
 \min(1290.36,\;60.81\times AI)
-\]
+$$
 
 그러나 이후 AI sweep 실험에서 이 값보다 높은 성능이 관찰되었다.
 
@@ -199,32 +199,32 @@ output[i] = x;
 
 이므로 총
 
-\[
+$$
 8\text{ Byte}
-\]
+$$
 
 이다.
 
 FMA 한 번은
 
-\[
+$$
 a\times b+c
-\]
+$$
 
 형태이므로 2 FLOPs로 계산한다.
 
-따라서 반복 횟수가 \(K\)일 때
+따라서 반복 횟수가 $K$일 때
 
-\[
+$$
 \text{FLOPs}=2K
-\]
+$$
 
 이고 Arithmetic Intensity는
 
-\[
+$$
 AI=\frac{2K}{8}
 =\frac{K}{4}
-\]
+$$
 
 이다.
 
@@ -494,49 +494,49 @@ nvcc -O3 -arch=sm_87 roofline_sweep.cu -o roofline_sweep
 
 낮은 AI에서는 performance가 거의
 
-\[
+$$
 P \approx BW\times AI
-\]
+$$
 
 형태를 따른다.
 
 예를 들어
 
-\[
+$$
 AI=1
-\]
+$$
 
 일 때
 
-\[
+$$
 P=74.15\ \text{GFLOP/s}
-\]
+$$
 
 이고 effective bandwidth는
 
-\[
+$$
 74.15\ \text{GB/s}
-\]
+$$
 
 이다.
 
 또한
 
-\[
+$$
 AI=2
-\]
+$$
 
 에서는
 
-\[
+$$
 P=146.42\ \text{GFLOP/s}
-\]
+$$
 
 이므로 거의
 
-\[
+$$
 74\times2
-\]
+$$
 
 의 관계가 성립한다.
 
@@ -544,9 +544,9 @@ P=146.42\ \text{GFLOP/s}
 
 실험에서 낮은 AI 구간의 sustained bandwidth는 약
 
-\[
+$$
 \boxed{74.2\ \text{GB/s}}
-\]
+$$
 
 로 관찰되었다.
 
@@ -565,17 +565,17 @@ K=2048  → 2018.83 GFLOP/s
 
 즉 약
 
-\[
+$$
 \boxed{2.0\ \text{TFLOP/s}}
-\]
+$$
 
 근처에서 saturation이 발생한다.
 
 따라서 이번 실험의 empirical FP32 compute roof는
 
-\[
+$$
 \boxed{2018.83\ \text{GFLOP/s}}
-\]
+$$
 
 정도로 볼 수 있다.
 
@@ -596,21 +596,21 @@ GPU:
 
 따라서
 
-\[
+$$
 P_{\mathrm{theory}}
 =
 8\times128\times1.02\times2
-\]
+$$
 
-\[
+$$
 \approx2089\ \text{GFLOP/s}
-\]
+$$
 
 즉
 
-\[
+$$
 \boxed{2.09\ \text{TFLOP/s}}
-\]
+$$
 
 이다.
 
@@ -618,13 +618,13 @@ P_{\mathrm{theory}}
 
 Theoretical DRAM bandwidth:
 
-\[
+$$
 \boxed{102.4\ \text{GB/s}}
-\]
+$$
 
 따라서 theoretical Roofline은
 
-\[
+$$
 P_{\mathrm{theory}}(AI)
 =
 \min
@@ -632,7 +632,7 @@ P_{\mathrm{theory}}(AI)
 2089,\;
 102.4\times AI
 \right)
-\]
+$$
 
 이다.
 
@@ -642,21 +642,21 @@ P_{\mathrm{theory}}(AI)
 
 이번 AI sweep 결과를 기준으로
 
-\[
+$$
 BW_{\mathrm{empirical}}
 \approx74.2\ \text{GB/s}
-\]
+$$
 
-\[
+$$
 P_{\mathrm{empirical}}
 \approx2018.83\ \text{GFLOP/s}
-\]
+$$
 
 를 사용하였다.
 
 따라서
 
-\[
+$$
 P_{\mathrm{empirical}}(AI)
 =
 \min
@@ -664,7 +664,7 @@ P_{\mathrm{empirical}}(AI)
 2018.83,\;
 74.2\times AI
 \right)
-\]
+$$
 
 이다.
 
@@ -674,43 +674,43 @@ P_{\mathrm{empirical}}(AI)
 
 Ridge point는 memory-bound 영역과 compute-bound 영역이 만나는 지점이다.
 
-\[
+$$
 AI_{\mathrm{ridge}}
 =
 \frac{P_{\mathrm{peak}}}{BW}
-\]
+$$
 
 ### Theoretical Ridge
 
-\[
+$$
 AI_{\mathrm{ridge,theory}}
 =
 \frac{2089}{102.4}
 \approx20.4
-\]
+$$
 
 따라서
 
-\[
+$$
 \boxed{20.4\ \text{FLOP/Byte}}
-\]
+$$
 
 이다.
 
 ### Empirical Ridge
 
-\[
+$$
 AI_{\mathrm{ridge,empirical}}
 =
 \frac{2018.83}{74.2}
 \approx27.2
-\]
+$$
 
 따라서
 
-\[
+$$
 \boxed{27.2\ \text{FLOP/Byte}}
-\]
+$$
 
 이다.
 
@@ -743,12 +743,12 @@ AI = 512   → 3.94 GB/s
 
 본 실험에서 Effective BW는
 
-\[
+$$
 BW_{\mathrm{effective}}
 =
 \frac{\text{memory traffic}}
 {\text{execution time}}
-\]
+$$
 
 으로 계산한다.
 
@@ -1012,43 +1012,43 @@ roofline_final.png
 
 ### Theoretical
 
-\[
+$$
 BW_{\mathrm{theory}}
 =
 102.4\ \text{GB/s}
-\]
+$$
 
-\[
+$$
 P_{\mathrm{theory}}
 =
 2.09\ \text{TFLOP/s}
-\]
+$$
 
-\[
+$$
 AI_{\mathrm{ridge,theory}}
 =
 20.4\ \text{FLOP/Byte}
-\]
+$$
 
 ### Empirical
 
-\[
+$$
 BW_{\mathrm{empirical}}
 \approx
 74.2\ \text{GB/s}
-\]
+$$
 
-\[
+$$
 P_{\mathrm{empirical}}
 \approx
 2.02\ \text{TFLOP/s}
-\]
+$$
 
-\[
+$$
 AI_{\mathrm{ridge,empirical}}
 \approx
 27.2\ \text{FLOP/Byte}
-\]
+$$
 
 특히 낮은 AI에서는 측정점들이 empirical memory roof를 거의 그대로 따라가며, 높은 AI에서는 약 2 TFLOP/s 부근으로 수렴하였다.
 
