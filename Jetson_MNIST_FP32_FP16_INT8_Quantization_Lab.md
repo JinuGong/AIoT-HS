@@ -520,9 +520,9 @@ FP32 Accuracy: 98.38%
 
 따라서 기준 모델의 정확도는
 
-\[
+$$
 \boxed{98.38\%}
-\]
+$$
 
 이다.
 
@@ -700,33 +700,23 @@ INT8 quantization은 실수 값을 8-bit 정수 값으로 근사한다.
 
 대표적인 symmetric quantization은 다음과 같이 표현할 수 있다.
 
-\[
-x_q
-=
-\operatorname{clip}
-\left(
-\operatorname{round}
-\left(
-\frac{x}{s}
-\right),
--128,
-127
-\right)
-\]
+$$
+x_q = \operatorname{clip} \left( \operatorname{round} \left( \frac{x}{s} \right), -128, 127 \right)
+$$
 
 여기서
 
-- \(x\): 원래 FP32 값
-- \(x_q\): INT8 정수 값
-- \(s\): scale factor
+- $x$: 원래 FP32 값
+- $x_q$: INT8 정수 값
+- $s$: scale factor
 
 이다.
 
 복원 시에는
 
-\[
+$$
 \hat{x}=s x_q
-\]
+$$
 
 를 사용한다.
 
@@ -740,15 +730,15 @@ Weight뿐 아니라 activation도 INT8로 변환하려면 각 activation의 실�
 
 예를 들어 activation 값이 대략
 
-\[
+$$
 [-3.2, 2.8]
-\]
+$$
 
 범위에서 발생한다면, 이를 INT8 범위
 
-\[
+$$
 [-128,127]
-\]
+$$
 
 에 적절히 대응시키는 scale을 정해야 한다.
 
@@ -1025,27 +1015,23 @@ config.int8_calibrator = calibrator
 
 FP32 대비 INT8 compression ratio는
 
-\[
-\frac{901}{318}
-\approx
-2.83
-\]
+$$
+\frac{901}{318} \approx 2.83
+$$
 
 이므로 실제 TensorRT engine 기준 약
 
-\[
+$$
 \boxed{2.83\times}
-\]
+$$
 
 작아졌다.
 
 이론적으로 단순한 weight 저장 크기만 비교하면
 
-\[
-32\text{ bit}
-\rightarrow
-8\text{ bit}
-\]
+$$
+32\text{ bit} \rightarrow 8\text{ bit}
+$$
 
 이므로 4배 감소를 기대할 수 있지만, 실제 `.engine` 파일에는 weight 외에도 TensorRT execution 정보, kernel 선택 정보, metadata 등이 포함되므로 정확히 4배가 되지는 않는다.
 
@@ -1098,27 +1084,23 @@ INT8:
 
 INT8은 FP16 대비 throughput 기준
 
-\[
-\frac{8903.12}{7781.8}
-\approx
-1.144
-\]
+$$
+\frac{8903.12}{7781.8} \approx 1.144
+$$
 
 즉 약
 
-\[
+$$
 \boxed{14.4\%}
-\]
+$$
 
 높은 throughput을 보였다.
 
 GPU compute time을 기준으로 하면
 
-\[
-\frac{0.115445}{0.104453}
-\approx
-1.105
-\]
+$$
+\frac{0.115445}{0.104453} \approx 1.105
+$$
 
 이므로 약 1.10배 빨랐다.
 
@@ -1172,31 +1154,23 @@ INT8:
 
 GPU compute 기준:
 
-\[
-\text{Speedup}_{FP16}
-=
-\frac{0.254437}
-{0.172999}
-\approx
-1.47
-\]
+$$
+\text{Speedup}_{\text{FP16}} = \frac{0.254437} {0.172999} \approx 1.47
+$$
 
 따라서
 
-\[
-\boxed{FP16 \approx 1.47\times}
-\]
+$$
+\boxed{\text{FP16} \approx 1.47\times}
+$$
 
 의 speedup을 보였다.
 
 Throughput 기준:
 
-\[
-\frac{5635.02}
-{3858.46}
-\approx
-1.46
-\]
+$$
+\frac{5635.02} {3858.46} \approx 1.46
+$$
 
 이다.
 
@@ -1206,33 +1180,23 @@ Throughput 기준:
 
 GPU compute 기준:
 
-\[
-\text{Speedup}_{INT8}
-=
-\frac{0.254437}
-{0.176651}
-\approx
-1.44
-\]
+$$
+\text{Speedup}_{\text{INT8}} = \frac{0.254437} {0.176651} \approx 1.44
+$$
 
 Throughput 기준:
 
-\[
-\frac{5519.61}
-{3858.46}
-\approx
-1.43
-\]
+$$
+\frac{5519.61} {3858.46} \approx 1.43
+$$
 
 이다.
 
 즉 batch 32에서는
 
-\[
-\boxed{
-FP16 \approx INT8 \gg FP32
-}
-\]
+$$
+\boxed{ \text{FP16} \approx \text{INT8} \gg \text{FP32} }
+$$
 
 형태의 결과가 나타났다.
 
@@ -1249,15 +1213,15 @@ INT8 GPU Compute Time = 0.176651 ms
 
 즉
 
-\[
-INT8 < FP16
-\]
+$$
+INT8 \lt  FP16
+$$
 
 이라는 단순한 bit-width 관계가 곧바로
 
-\[
-T_{INT8}<T_{FP16}
-\]
+$$
+T_{\text{INT8}}\lt T_{\text{FP16}}
+$$
 
 을 의미하지 않는다.
 
@@ -1265,19 +1229,9 @@ T_{INT8}<T_{FP16}
 
 대략적으로
 
-\[
-T_{\text{inference}}
-=
-T_{\text{compute}}
-+
-T_{\text{memory}}
-+
-T_{\text{kernel}}
-+
-T_{\text{quant/dequant}}
-+
-T_{\text{overhead}}
-\]
+$$
+T_{\text{inference}} = T_{\text{compute}} + T_{\text{memory}} + T_{\text{kernel}} + T_{\text{quant/dequant}} + T_{\text{overhead}}
+$$
 
 로 생각할 수 있다.
 
@@ -1295,13 +1249,9 @@ TensorRT는 각 layer에 대해 실제 hardware kernel 성능을 고려하여 �
 
 즉
 
-\[
-\boxed{
-\text{Lower precision}
-\neq
-\text{Always lower latency}
-}
-\]
+$$
+\boxed{ \text{Lower precision} \neq \text{Always lower latency} }
+$$
 
 이다.
 
@@ -1317,23 +1267,17 @@ Batch size가 증가하면 한 번의 inference에서 더 많은 데이터를 �
 
 image throughput으로 환산하려면 대략
 
-\[
-\text{images/s}
-=
-\text{qps}
-\times
-\text{batch size}
-\]
+$$
+\text{images/s} = \text{qps} \times \text{batch size}
+$$
 
 로 볼 수 있다.
 
 예를 들어 FP16 batch 32:
 
-\[
-5635.02\times32
-\approx180{,}321
-\text{ images/s}
-\]
+$$
+5635.02\times32 \approx180{,}321 \text{ images/s}
+$$
 
 이다.
 
@@ -1367,24 +1311,15 @@ image throughput으로 환산하려면 대략
 
 이를 multi-objective 관점에서 보면 모델 선택 문제는 다음과 같이 생각할 수 있다.
 
-\[
-\max
-\{
-\text{Accuracy},
-\text{Throughput}
-\}
-\]
+$$
+\max \{ \text{Accuracy}, \text{Throughput} \}
+$$
 
 동시에
 
-\[
-\min
-\{
-\text{Latency},
-\text{Model Size},
-\text{Memory}
-\}
-\]
+$$
+\min \{ \text{Latency}, \text{Model Size}, \text{Memory} \}
+$$
 
 를 만족하는 precision을 찾는 문제이다.
 
@@ -1405,17 +1340,17 @@ test_labels.npy
 
 를 실제 FP32, FP16, INT8 TensorRT engine에 입력하여 다음 정확도를 비교하는 것이다.
 
-\[
-Acc_{FP32}
-\]
+$$
+\text{Acc}_{\text{FP32}}
+$$
 
-\[
-Acc_{FP16}
-\]
+$$
+\text{Acc}_{\text{FP16}}
+$$
 
-\[
-Acc_{INT8}
-\]
+$$
+\text{Acc}_{\text{INT8}}
+$$
 
 최종적으로 다음 세 지표를 함께 비교한다.
 
