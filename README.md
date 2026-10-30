@@ -114,6 +114,12 @@ sudo poweroff
 > sudo shutdown -h now
 > ```
 
+## 새로운 Jetson 보드 USB 연결 시 
+```bash
+ssh-keygen -R 192.168.55.1
+ssh hansungai@192.168.55.1
+```
+
 ---
 
 ## 5. VS Code Remote SSH로 접속
