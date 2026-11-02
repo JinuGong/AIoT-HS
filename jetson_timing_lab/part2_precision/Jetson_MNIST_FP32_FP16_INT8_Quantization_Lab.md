@@ -57,8 +57,6 @@ ModuleNotFoundError: No module named 'tensorrt'  ← 보드 기준 실험용 ~/b
 
 ## 3. 가상환경 만들기 (조별 1회)
 
-> [!IMPORTANT]
-> 이 절의 명령은 모두 **sudo 없이** 실행한다. `sudo pip`, `sudo python`을 쓰면 시스템 Python에 설치되거나 파일이 root 소유가 되어 이후 설치가 깨진다.
 
 ### 3.1 다른 환경 끄기
 
