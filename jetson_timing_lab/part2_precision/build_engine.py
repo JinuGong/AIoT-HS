@@ -4,12 +4,14 @@
 사용:
     python3 build_engine.py fp32        # → mnist_fp32.engine  (TF32 끔: 진짜 FP32 기준)
     python3 build_engine.py fp16        # → mnist_fp16.engine
-    python3 build_engine.py int8        # → mnist_int8.engine  (calib_data.npy로 PTQ calibration)
+    python3 build_engine.py int8        # → mnist_int8.engine  (INT8 + FP16 허용: TensorRT가 층마다 더 빠른 쪽 선택)
+    python3 build_engine.py int8only    # → mnist_int8only.engine  (INT8만 허용: 안 되는 층은 순수 FP32)
 
 INT8만 calibrator가 필요한 이유: weight의 범위는 파일에 있지만, activation(중간 출력)의 범위는
 실제 입력을 넣어 봐야 알 수 있다. 아래 Calibrator는 calib_data.npy를 batch 단위로 GPU에 올려 줄 뿐이다.
 """
 import argparse
+import json
 import os
 
 import numpy as np
@@ -54,6 +56,7 @@ def build(precision, onnx_path="mnist.onnx"):
 
     config = builder.create_builder_config()
     config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
+    config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED   # 층별 precision을 나중에 확인할 수 있게 기록
     profile = builder.create_optimization_profile()
     profile.set_shape("input", **SHAPES)
     config.add_optimization_profile(profile)
@@ -64,7 +67,12 @@ def build(precision, onnx_path="mnist.onnx"):
         config.set_flag(trt.BuilderFlag.FP16)
     elif precision == "int8":
         config.set_flag(trt.BuilderFlag.INT8)
-        config.set_flag(trt.BuilderFlag.FP16)             # INT8이 안 되는 layer는 FP32 대신 FP16으로 (TensorRT 일반 권장)
+        config.set_flag(trt.BuilderFlag.FP16)             # FP16도 허용 → 작은 층은 INT8보다 FP16이 빨라 FP16이 선택될 수 있다
+        config.int8_calibrator = Calibrator()
+        config.set_calibration_profile(profile)
+    elif precision == "int8only":
+        config.set_flag(trt.BuilderFlag.INT8)             # INT8만 허용
+        config.clear_flag(trt.BuilderFlag.TF32)           # INT8이 안 되는 층은 순수 FP32로
         config.int8_calibrator = Calibrator()
         config.set_calibration_profile(profile)
 
@@ -74,9 +82,24 @@ def build(precision, onnx_path="mnist.onnx"):
     out = f"mnist_{precision}.engine"
     open(out, "wb").write(engine)
     print(f"Saved: {out}  ({os.path.getsize(out) / 1024:.0f} KB)  TensorRT {trt.__version__}")
+    show_layer_precision(engine)
+
+
+def show_layer_precision(serialized):
+    """flag는 '허용'일 뿐이다. TensorRT가 층마다 실제로 고른 가중치 형식을 출력한다."""
+    try:
+        eng = trt.Runtime(LOGGER).deserialize_cuda_engine(serialized)
+        info = json.loads(eng.create_engine_inspector().get_engine_information(trt.LayerInformationFormat.JSON))
+        print("  실제로 선택된 가중치 형식 (Float=FP32, Half=FP16, Int8=INT8):")
+        for layer in info.get("Layers", []):
+            if isinstance(layer, dict) and "Weights" in layer:
+                name = layer["Name"].split(" + ")[0].replace("/features/", "").replace("/classifier/", "")
+                print(f"    {name:40s} {layer['Weights']['Type']:6s} ({layer['Weights']['Count']:,} 개)")
+    except Exception as e:                                 # 확인용 출력이므로 실패해도 engine 파일은 이미 저장됨
+        print("  (층별 정보 출력 생략:", e, ")")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("precision", choices=["fp32", "fp16", "int8"])
+    ap.add_argument("precision", choices=["fp32", "fp16", "int8", "int8only"])
     build(ap.parse_args().precision)
