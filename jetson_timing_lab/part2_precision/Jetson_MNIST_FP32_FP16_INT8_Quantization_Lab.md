@@ -326,7 +326,7 @@ def get_batch(self, names):
 | `fp32` | 916 KB | 808 KiB | ≈ 108 KB |
 | `fp16` | 516 KB | 404 KiB | ≈ 112 KB |
 | `int8` | 506 KB | 404 KiB (실제로는 FP16) | ≈ 102 KB |
-| `int8only` | 316 KB | ≈ 206 KiB (INT8 + FC2 FP32) | ≈ 110 KB |
+| `int8only` | 317 KB | ≈ 206 KiB (INT8 + FC2 FP32) | ≈ 111 KB |
 
 가중치 부분은 1 : 1/2 : 1/4로 줄지만, kernel 선택 · layer 정보 · scale 등 **약 100 KB의 고정 부분**이 있어 FP32 ÷ INT8 = 2.9배에 그친다. 큰 모델일수록 이 고정 부분의 비중이 작아져 4배에 가까워진다. `int8`이 `fp16`과 크기가 같다는 것도 "INT8이 쓰이지 않았다"는 증거다.
 
@@ -354,11 +354,11 @@ python eval_engine.py mnist_fp32.engine mnist_fp16.engine mnist_int8.engine mnis
 
 ```text
 model             size KB   acc %    B=1 ms   B=1 p95   B=32 ms  B=32 img/s
-PyTorch FP32          812   98.29    0.8490    0.8736    0.8817       36292
-TensorRT FP32         916   98.29    0.1505    0.1630    0.2172      147308
-TensorRT FP16         516   98.29    0.1102    0.1236    0.1317      242925
-TensorRT INT8         506   98.29    0.1076    0.1185    0.1269      252080
-TensorRT INT8ONLY     316   94.26    0.1015    0.1118    0.1323      241955
+PyTorch FP32          812   98.29    0.8493    0.8781    0.8793       36391
+TensorRT FP32         916   98.29    0.1493    0.1634    0.2184      146552
+TensorRT FP16         516   98.29    0.1112    0.1223    0.1289      248231
+TensorRT INT8         506   98.29    0.1091    0.1206    0.1277      250595
+TensorRT INT8ONLY     317   94.26    0.1027    0.1131    0.1319      242571
 ```
 
 ---
@@ -391,17 +391,18 @@ done
 
 ## 8. 예시 결과 (교수자 보드, 2026-11-02)
 
-환경: Jetson Orin Nano Super, TensorRT 10.3.0, torch 2.8.0, B=32 기준.
+환경: Jetson Orin Nano Super, TensorRT 10.3.0, torch 2.8.0. 모든 값은 `build_engine.py`로 만든 같은 engine에서 잰 것이다.
 
-| 모드 | Engine | 정확도 | eval B=1 | eval B=32 | trtexec B=32 GPU Compute (median) | 실제 가중치 형식 |
-|---|---:|---:|---:|---:|---:|---|
-| PyTorch FP32 | 812 KB | 98.29% | 0.849 ms | 0.882 ms | — | FP32 |
-| `fp32` | 916 KB | 98.29% | 0.151 ms | 0.217 ms | 0.217 ms | FP32 |
-| `fp16` | 516 KB | 98.29% | 0.110 ms | 0.132 ms | 0.114 ms | FP16 |
-| `int8` | 506 KB | 98.29% | 0.108 ms | 0.127 ms | 0.111 ms | **FP16** (INT8 미사용) |
-| `int8only` | 316 KB | **94.26%** | 0.102 ms | 0.132 ms | 0.113 ms | INT8 (FC2만 FP32) |
+| 모드 | Engine | 정확도 | eval B=1 | eval B=32 | trtexec B=32 GPU Compute (median) | trtexec qps (B=32) | 실제 가중치 형식 |
+|---|---:|---:|---:|---:|---:|---:|---|
+| PyTorch FP32 | 812 KB | 98.29% | 0.849 ms | 0.879 ms | — | — | FP32 |
+| `fp32` | 916 KB | 98.29% | 0.149 ms | 0.218 ms | 0.219 ms | 4,483 | FP32 |
+| `fp16` | 516 KB | 98.29% | 0.111 ms | 0.129 ms | 0.114 ms | 8,445 | FP16 |
+| `int8` | 506 KB | 98.29% | 0.109 ms | 0.128 ms | 0.111 ms | 8,697 | **FP16** (INT8 미사용) |
+| `int8only` | 317 KB | **94.26%** | 0.103 ms | 0.132 ms | 0.115 ms | 8,368 | INT8 (FC2만 FP32) |
 
-> `int8only`의 trtexec 값은 batch 32 고정 shape로 따로 만든 engine에서 잰 것이다. 다른 값은 모두 `build_engine.py`로 만든 같은 engine에서 잰 것이다.
+- 같은 보드에서 두 번 측정해도 값이 0.005 ms 이내로 같게 나왔다 (재현성 확인).
+- `eval_engine.py`와 `trtexec`가 FP32에서는 일치하고, FP16 · INT8 계열에서는 `eval_engine.py`가 약 0.015 ms 크다 (7절 마지막 항목).
 
 ---
 
@@ -411,8 +412,8 @@ done
 
 | 비교 | B=1 | B=32 |
 |---|---:|---:|
-| PyTorch FP32 → TensorRT FP32 (**런타임**) | 0.849 → 0.151 ms, **5.6배** | 0.882 → 0.217 ms, **4.1배** |
-| TensorRT FP32 → FP16 (**precision**) | 0.151 → 0.110 ms, 1.4배 | 0.217 → 0.132 ms, 1.6배 |
+| PyTorch FP32 → TensorRT FP32 (**런타임**) | 0.849 → 0.149 ms, **5.7배** | 0.879 → 0.218 ms, **4.0배** |
+| TensorRT FP32 → FP16 (**precision**) | 0.149 → 0.111 ms, 1.3배 | 0.218 → 0.129 ms, 1.7배 |
 
 precision을 바꾸기도 전에, 런타임을 PyTorch에서 TensorRT로 바꾸는 것만으로 4~6배 빨라졌다. PyTorch(eager)는 층마다 GPU kernel을 Python에서 하나씩 실행시키므로, 이렇게 작은 모델에서는 그 호출 비용이 전체 시간을 지배한다(B=1과 B=32의 시간이 거의 같은 것이 그 증거). TensorRT는 층을 합치고(Conv+ReLU fusion) 호출을 한 번으로 묶어 이 비용을 없앤다.
 
@@ -426,7 +427,7 @@ $$
 
 ### 9.3 INT8이 항상 더 빠르지는 않다
 
-INT8만 허용한 `int8only`도 B=32에서 FP16과 같은 시간이다 (trtexec 0.113 ms vs 0.114 ms). 추론 시간은 대략
+INT8만 허용한 `int8only`도 B=32에서 FP16과 같은 시간이다 (trtexec 0.115 ms vs 0.114 ms). 추론 시간은 대략
 
 $$
 T \approx T_{\text{compute}} + T_{\text{memory}} + T_{\text{kernel launch}} + T_{\text{quant/dequant}} + T_{\text{overhead}}
@@ -447,11 +448,11 @@ $$
 
 ### 9.5 작은 차이는 차이인가
 
-B=1에서 `int8only`(0.102 ms)가 `fp16`(0.110 ms)보다 약 8% 빨랐지만, 둘 다 약 0.1 ms이다. 이 크기에서는 반복 측정의 편차와 비슷할 수 있으므로 **trial 3개의 값(`precision.json`의 `trial_median_ms`)이 겹치는지** 먼저 확인한다. 겹치면 "차이 없음"으로 보고한다.
+B=1에서 `int8only`(0.103 ms)가 `fp16`(0.111 ms)보다 약 8% 빨랐지만, 둘 다 약 0.1 ms이다. 이 크기에서는 반복 측정의 편차와 비슷할 수 있으므로 **trial 3개의 값(`precision.json`의 `trial_median_ms`)이 겹치는지** 먼저 확인한다. 겹치면 "차이 없음"으로 보고한다.
 
 ### 9.6 Batch를 키우면
 
-TensorRT FP16은 B=1 → B=32에서 한 번의 호출 시간이 0.110 → 0.132 ms로 약 1.2배만 늘지만, 처리하는 이미지는 32배다. 작은 모델은 batch를 키워야 GPU가 일을 한다. 반대로 **카메라 한 장씩 처리하는 서비스는 B=1 지연**이 중요하다 — 어떤 batch를 볼지는 응용이 정한다.
+TensorRT FP16은 B=1 → B=32에서 한 번의 호출 시간이 0.111 → 0.129 ms로 약 1.2배만 늘지만, 처리하는 이미지는 32배다. 작은 모델은 batch를 키워야 GPU가 일을 한다. 반대로 **카메라 한 장씩 처리하는 서비스는 B=1 지연**이 중요하다 — 어떤 batch를 볼지는 응용이 정한다.
 
 ### 9.7 Pareto 관점
 
@@ -464,7 +465,6 @@ TensorRT FP16은 B=1 → B=32에서 한 번의 호출 시간이 0.110 → 0.132 
 이 모델에서는 **FP16이 가장 균형 잡힌 선택**이다. 저장 공간이 가장 중요한 조건일 때만 `int8only`가 의미가 있다. 모델이 커져 연산이 시간을 지배하면 INT8의 속도 이득이 나타날 수 있으므로, 이 결론은 "이 모델, 이 보드"에 대한 것이다.
 
 ---
-
 ## 10. 문제 해결
 
 **대부분의 오류는 가상환경이 꺼진 상태에서 실행해서 생긴다.** 먼저 프롬프트에 `(quant_env)`가 있는지, 현재 폴더가 `~/quantization_lab`인지 확인한다.
