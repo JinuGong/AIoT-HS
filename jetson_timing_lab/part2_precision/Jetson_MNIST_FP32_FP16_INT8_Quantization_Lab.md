@@ -26,42 +26,158 @@ mnist_fp32.engine · mnist_fp16.engine · mnist_int8.engine
 
 ## 2. 실험 환경
 
-| 항목 | 값 (예시 보드에서 확인) |
+| 항목 | 값 |
 |---|---|
 | Device | Jetson Orin Nano (Super), GPU compute capability 8.7 (Ampere), 8 SM |
 | 전력 모드 | MAXN SUPER + `jetson_clocks` (보드 기준 실험과 동일) |
-| TensorRT | 10.3.0 (JetPack 6.x 포함) |
-| Python | 3.10 (JetPack 시스템 Python) |
+| TensorRT | 10.3.0 (JetPack 6.x에 포함, 시스템에 설치되어 있음) |
+| PyTorch | 2.8.0 Jetson용 CUDA 휠 (보드 기준 실험과 같은 버전) |
+| NumPy | 2 미만 (1.26.x) |
+| Python | 3.10 기반 가상환경 `~/quantization_lab/quant_env` |
+| 작업 폴더 | `~/quantization_lab` |
 
-```bash
-python3 -c "import tensorrt as trt; print(trt.__version__)"
-python3 -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+이 실험에는 **TensorRT와 torch가 둘 다** 필요한데, 두 패키지는 설치된 위치가 다르다.
+
+| 패키지 | 설치 위치 | 그래서 |
+|---|---|---|
+| TensorRT | 시스템 Python (`/usr/lib/python3.10/dist-packages`) | 가상환경을 `--system-site-packages`로 만들어야 보인다 |
+| torch 2.8.0 | 가상환경 `quant_env` 안 | 가상환경을 켜지 않으면 보이지 않는다 |
+
+따라서 **가상환경을 켜지 않고 실행하면 반드시 실패한다.** 이 실습에서 가장 흔한 실수다.
+
+```text
+ModuleNotFoundError: No module named 'torch'     ← 가상환경을 안 켜고 시스템 python3로 실행함
+ModuleNotFoundError: No module named 'tensorrt'  ← 보드 기준 실험용 ~/benchmark/venv를 켜고 실행함
 ```
+
+> [!IMPORTANT]
+> **보드 기준 실험의 `~/benchmark/venv`를 재사용하지 않는다.** 그 가상환경은 시스템 패키지를 보지 못하도록 격리되어 있어 TensorRT가 없다. 이 실험용 가상환경을 3절대로 새로 만든다.
 
 ---
 
-## 3. 가상환경
+## 3. 가상환경 만들기 (조별 1회)
 
-Jetson의 TensorRT · PyTorch는 JetPack용 빌드이므로 **시스템 패키지를 그대로 보이게** 가상환경을 만든다.
+> [!IMPORTANT]
+> 이 절의 명령은 모두 **sudo 없이** 실행한다. `sudo pip`, `sudo python`을 쓰면 시스템 Python에 설치되거나 파일이 root 소유가 되어 이후 설치가 깨진다.
+
+### 3.1 다른 환경 끄기
+
+프롬프트 맨 앞에 `(base)`, `(venv)` 같은 표시가 있으면 먼저 끈다.
 
 ```bash
-mkdir -p ~/quantization_lab && cd ~/quantization_lab
-/usr/bin/python3 -m venv --system-site-packages quant_env
-source quant_env/bin/activate
-pip install onnx "numpy==1.26.4"     # NumPy 2.x는 JetPack용 PyTorch와 binary 호환 문제가 날 수 있음
+conda deactivate 2>/dev/null; deactivate 2>/dev/null
 ```
 
-- **pycuda는 설치하지 않는다.** GPU 버퍼는 PyTorch 텐서로 대신한다.
-- `pip install torch`는 하지 않는다 (JetPack용 torch를 덮어쓰면 CUDA가 사라진다).
+프롬프트가 `hansungai@hansungai-desktop:~$`처럼 괄호 없이 시작하면 된다.
 
-실습 파일 3개를 이 폴더에 둔다: `train_export.py`, `build_engine.py`, `eval_engine.py`
+### 3.2 시스템에 TensorRT가 있는지 확인
+
+```bash
+/usr/bin/python3 -c "import tensorrt as trt; print(trt.__version__)"
+```
+
+`10.3.0`이 나오면 다음으로 넘어간다. 오류가 나면 **교수자에게 문의**한다 (보드에 TensorRT 설치가 필요하다).
+
+### 3.3 작업 폴더와 가상환경 생성
+
+```bash
+mkdir -p ~/quantization_lab
+cd ~/quantization_lab
+/usr/bin/python3.10 -m venv --system-site-packages quant_env
+```
+
+- `--system-site-packages`를 빠뜨리면 TensorRT가 보이지 않는다. 빠뜨렸다면 `rm -rf quant_env` 후 다시 만든다.
+- `ensurepip is not available` 오류가 나면 교수자에게 문의한다.
+
+### 3.4 가상환경 켜기 ★
+
+```bash
+source ~/quantization_lab/quant_env/bin/activate
+```
+
+프롬프트 맨 앞에 **`(quant_env)`**가 붙어야 한다.
+
+```text
+(quant_env) hansungai@hansungai-desktop:~/quantization_lab$
+```
+
+> [!WARNING]
+> 가상환경은 **터미널마다** 따로 켜야 한다. 새 터미널을 열거나, SSH로 다시 접속하거나, 보드를 재부팅하면 꺼진다. 그때마다 3.4의 명령을 다시 실행한다.
+> **이후 모든 명령은 치기 전에 프롬프트에 `(quant_env)`가 있는지 먼저 본다.**
+
+### 3.5 패키지 설치 (`(quant_env)` 상태에서)
+
+```bash
+# (1) pip 업데이트
+python -m pip install --upgrade pip
+
+# (2) Jetson 전용 CUDA torch — 보드 기준 실험과 같은 버전 (반드시 --no-deps 와 --index-url 을 함께)
+python -m pip install --no-deps torch==2.8.0 \
+    --index-url https://pypi.jetson-ai-lab.io/jp6/cu126
+
+# (3) torch 의존성 + onnx (numpy 는 반드시 2 미만)
+python -m pip install filelock "typing-extensions>=4.10" "sympy>=1.13.3" \
+    networkx jinja2 fsspec "numpy<2" onnx
+```
+
+> [!CAUTION]
+> - `pip install torch`를 index 지정 없이 실행하지 않는다. GPU를 쓰지 못하는 PyPI용 torch가 설치된다.
+> - 이 가상환경에 `torchvision`, `ultralytics` 등 다른 패키지를 추가로 설치하지 않는다. torch를 PyPI판으로 바꿔 버릴 수 있다.
+> - **pycuda는 설치하지 않는다.** GPU 버퍼는 PyTorch 텐서로 대신한다.
+
+### 3.6 설치 확인
+
+```bash
+python -c "import sys, torch, tensorrt, numpy, onnx; print(sys.executable); print('torch', torch.__version__, torch.cuda.is_available(), '| tensorrt', tensorrt.__version__, '| numpy', numpy.__version__)"
+```
+
+다음처럼 나와야 한다.
+
+```text
+/home/hansungai/quantization_lab/quant_env/bin/python      ← quant_env 안의 python
+torch 2.8.0 True | tensorrt 10.3.0 | numpy 1.26.4
+```
+
+- 첫 줄이 `/usr/bin/python3…`이면 가상환경이 꺼진 상태다 → 3.4로 돌아간다.
+- `False`가 나오면 11절의 문제 해결을 본다.
+
+### 3.7 실습 파일 놓기
+
+실습 파일 3개를 `~/quantization_lab`에 둔다: `train_export.py`, `build_engine.py`, `eval_engine.py`
+
+```powershell
+# Windows PowerShell에서 (USB 연결 시)
+scp train_export.py build_engine.py eval_engine.py hansungai@192.168.55.1:~/quantization_lab/
+```
+
+```bash
+# 보드 기준 실험 폴더에 받아 두었다면 옮긴다
+mv ~/benchmark/train_export.py ~/benchmark/build_engine.py ~/benchmark/eval_engine.py ~/quantization_lab/
+```
+
+- 세 파일은 **반드시 같은 폴더**에 둔다 (`eval_engine.py`가 `train_export.py`에서 모델 구조를 가져온다).
+- 스크립트는 `mnist.onnx`, `calib_data.npy` 등을 **현재 폴더**에서 읽고 쓴다. 이후 모든 단계는 `~/quantization_lab`에서 실행한다.
+
+### 3.8 다음에 다시 실습할 때
+
+설치는 한 번만 하면 된다. 다음 시간에 터미널을 새로 열었다면 이 두 줄만 실행한다.
+
+```bash
+cd ~/quantization_lab
+source quant_env/bin/activate        # 프롬프트에 (quant_env) 확인
+```
 
 ---
 
 ## 4. 1단계 — 학습과 ONNX 내보내기
 
+> [!IMPORTANT]
+> **4~6절의 명령을 실행하기 전에 매번 확인한다.**
+> 1. 프롬프트에 `(quant_env)`가 있다 → 없으면 `source ~/quantization_lab/quant_env/bin/activate`
+> 2. 현재 폴더가 `~/quantization_lab`이다 → 아니면 `cd ~/quantization_lab`
+
 ```bash
-python3 train_export.py            # 기본 3 epoch
+python train_export.py            # 기본 3 epoch
 ```
 
 모델 구조 (파라미터 206,922개 → FP32 가중치 약 808 KiB):
@@ -79,9 +195,12 @@ Flatten → Linear(1568→128) → ReLU → Linear(128→10)
 
 출력: `mnist_fp32.pth`, `mnist.onnx`, `calib_data.npy`(학습 이미지 1,024장), `test_data.npy`, `test_labels.npy`
 
+첫 줄에 `Device: cuda Orin`이 나와야 GPU로 학습한 것이다. `Device: cpu`가 나오면 3.6으로 돌아가 확인한다.
+
 예시 결과 (교수자 보드):
 
 ```text
+Device: cuda Orin
 Epoch 1/3  loss=0.3449
 Epoch 2/3  loss=0.0787
 Epoch 3/3  loss=0.0538
@@ -93,9 +212,9 @@ PyTorch FP32 accuracy: 98.38%
 ## 5. 2단계 — TensorRT engine 만들기 (세 precision, 같은 스크립트)
 
 ```bash
-python3 build_engine.py fp32
-python3 build_engine.py fp16
-python3 build_engine.py int8
+python build_engine.py fp32
+python build_engine.py fp16
+python build_engine.py int8
 ```
 
 세 경우의 차이는 **builder flag 한 줄**뿐이다.
@@ -144,7 +263,7 @@ scale $s$를 정하려면 값의 범위를 알아야 한다.
 
 그래서 대표 입력(학습 이미지 1,024장)을 한 번 흘려 보내 층마다 범위를 재는 단계, 즉 **calibration**이 필요하다. 이것이 Post-Training Quantization(PTQ)이며, 모델을 다시 학습하는 QAT와 다르다. `IInt8EntropyCalibrator2`는 FP32 분포와 INT8 분포의 차이(KL divergence)가 가장 작아지는 범위를 고른다.
 
-`build_engine.py`의 `Calibrator`가 하는 일은 단순하다 — **calib_data.npy를 32장씩 GPU에 복사하고 그 주소를 TensorRT에 넘긴다.** 범위 계산은 TensorRT가 한다.
+`build_engine.py`의 `Calibrator`가 하는 일은 단순하다 — **calib_data.npy를 32장씩 GPU에 복사하고 그 주소를 TensorRT에 넘긴다.** 범위 계산은 TensorRT가 한다. (GPU 버퍼를 torch 텐서로 만들기 때문에 이 스크립트에도 torch가 필요하다.)
 
 ```python
 def get_batch(self, names):
@@ -175,13 +294,13 @@ def get_batch(self, names):
 ## 6. 3단계 — 정확도와 시간을 한 번에
 
 ```bash
-python3 eval_engine.py mnist_fp32.engine mnist_fp16.engine mnist_int8.engine \
+python eval_engine.py mnist_fp32.engine mnist_fp16.engine mnist_int8.engine \
         --torch mnist_fp32.pth --out precision.json
 ```
 
 - **정확도**: `test_data.npy` 10,000장 전체를 각 engine에 넣어 계산 (원본 실험에서 비어 있던 TensorRT engine 정확도).
 - **시간**: 보드 기준 실험과 같은 방법 — 입력을 GPU에 미리 두고, B=1 · B=32 각각 warm-up 100회 + 3 trial × 200회, CUDA event로 median · p95.
-- **`--torch`**: 같은 가중치를 PyTorch FP32로 실행한 값도 함께 → **런타임(PyTorch → TensorRT) 효과**와 **precision 효과**를 나눠 볼 수 있다.
+- **`--torch`**: 같은 가중치를 PyTorch FP32로 실행한 값도 함께 → **런타임(PyTorch → TensorRT) 효과**와 **precision 효과**를 나눠 볼 수 있다. 이 옵션은 같은 폴더의 `train_export.py`에서 모델 구조를 가져온다.
 
 출력 예 (형식):
 
@@ -197,9 +316,10 @@ TensorRT INT8        318   …
 
 ## 7. (확인용) trtexec로 교차 측정
 
-`trtexec`는 TensorRT에 포함된 벤치마크 도구다. 같은 engine으로 다시 재서 `eval_engine.py`의 값과 비교한다.
+`trtexec`는 TensorRT에 포함된 벤치마크 도구다 (Python이 아니라 실행 파일이므로 가상환경과 무관하게 동작한다). 같은 engine으로 다시 재서 `eval_engine.py`의 값과 비교한다.
 
 ```bash
+cd ~/quantization_lab
 for p in fp32 fp16 int8; do
   /usr/src/tensorrt/bin/trtexec --loadEngine=mnist_$p.engine --shapes=input:32x1x28x28 \
       --warmUp=2000 --duration=10 2>&1 | grep -E "Throughput|Latency|GPU Compute Time"
@@ -271,17 +391,24 @@ B=1 → B=32에서 한 번의 호출 시간은 약 1.5배만 늘지만 처리하
 | 비교표 | 정확도 · engine 크기 · B=1 median/p95 · B=32 images/s (PyTorch FP32 + TensorRT 3종) |
 | trtexec 교차 확인 | 한 precision 이상, GPU Compute Time과 eval_engine.py median 비교 |
 | 해석 | ① 런타임 효과(PyTorch → TRT FP32) ② precision 효과(FP32 → FP16 → INT8) ③ INT8 정확도 손실 |
-| 환경 | 보드 기준 실험의 teamXX.json, TensorRT · torch 버전, 전력 모드 |
+| 환경 | 보드 기준 실험의 teamXX.json, 3.6 설치 확인 출력(torch 2.8.0 · TensorRT 10.3.0), 전력 모드 |
 
 ## 11. 문제 해결
 
-| 증상 | 확인할 것 |
-|---|---|
-| `import tensorrt` 실패 | 가상환경을 `--system-site-packages` 없이 만들었음 → 다시 생성 |
-| `torch.cuda.is_available()`가 False | pip로 torch를 덮어씀 → JetPack용 torch 재설치 |
-| NumPy 관련 import 오류 | `pip install "numpy==1.26.4"` |
-| INT8 정확도가 크게 떨어짐 | calibration 데이터가 학습 데이터와 다른 전처리(0~1 정규화)인지, 오래된 `mnist_calib.cache` 재사용 여부 |
-| engine 로드 실패 | 다른 TensorRT 버전 · 다른 보드에서 만든 engine → 그 보드에서 다시 빌드 (engine은 이식되지 않음) |
+**대부분의 오류는 가상환경이 꺼진 상태에서 실행해서 생긴다.** 먼저 프롬프트에 `(quant_env)`가 있는지, 현재 폴더가 `~/quantization_lab`인지 확인한다.
+
+| 증상 | 원인 | 해결 |
+|---|---|---|
+| `No module named 'torch'` | 가상환경을 켜지 않아 시스템 Python으로 실행됨 | `source ~/quantization_lab/quant_env/bin/activate` 후 다시 실행 |
+| `No module named 'tensorrt'` | ① `~/benchmark/venv` 등 다른 가상환경이 켜져 있음 ② `quant_env`를 `--system-site-packages` 없이 만듦 | ① `deactivate` 후 3.4 ② `rm -rf quant_env` 후 3.3부터 다시 |
+| `python: command not found` | 가상환경이 꺼져 있음 (시스템에는 `python` 명령이 없을 수 있음) | 3.4 |
+| `torch.cuda.is_available()`가 False, 또는 학습 시 `Device: cpu` | PyPI용 torch가 설치됨 (index 없이 `pip install torch`, 또는 다른 패키지 설치가 torch를 바꿈) | 3.5의 (2)에 `--force-reinstall`을 붙여 다시 실행 |
+| `A module that was compiled using NumPy 1.x cannot be run in NumPy 2.x` | NumPy 2가 설치됨 | `python -m pip install "numpy<2"` |
+| `FileNotFoundError: mnist.onnx` / `calib_data.npy` | 다른 폴더에서 실행했거나 1단계를 건너뜀 | `cd ~/quantization_lab` 후 4절부터 |
+| `No module named 'train_export'` (6절) | 세 파일이 같은 폴더에 없음 | 3.7 |
+| 설치 중 `Permission denied` | 이전에 `sudo pip`를 써서 root 소유 파일이 생김 | 교수자에게 문의 |
+| INT8 정확도가 크게 떨어짐 | calibration 데이터 전처리(0~1 정규화)가 다르거나, 오래된 `mnist_calib.cache` 재사용 | `rm mnist_calib.cache` 후 `python build_engine.py int8` |
+| engine 로드 실패 | 다른 TensorRT 버전 · 다른 보드에서 만든 engine | 그 보드에서 다시 빌드 (engine은 이식되지 않음) |
 
 ## 참고
 
