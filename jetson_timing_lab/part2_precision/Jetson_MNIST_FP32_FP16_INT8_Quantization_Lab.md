@@ -279,7 +279,7 @@ Orin은 Ampere GPU라서 TensorRT가 FP32 layer에 **TF32**(가수 10 bit) Tenso
 INT8은 실수를 정수로 근사한다 (TensorRT는 대칭 양자화):
 
 $$
-x_q = \operatorname{clip}\left(\operatorname{round}\left(\frac{x}{s}\right), -127, 127\right), \qquad \hat{x} = s\,x_q
+x_q = \mathrm{clip}\left(\mathrm{round}\left(\frac{x}{s}\right), -127, 127\right), \qquad \hat{x} = s\,x_q
 $$
 
 scale $s$를 정하려면 값의 범위를 알아야 한다.
