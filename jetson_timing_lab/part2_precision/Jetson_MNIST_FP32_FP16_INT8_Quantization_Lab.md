@@ -465,18 +465,7 @@ TensorRT FP16은 B=1 → B=32에서 한 번의 호출 시간이 0.110 → 0.132 
 
 ---
 
-## 10. 제출물
-
-| 항목 | 내용 |
-|---|---|
-| `precision.json` | eval_engine.py 출력 그대로 (`int8only` 포함 5개 모델) |
-| 층별 precision | `build_engine.py int8`과 `int8only` 실행 시 출력된 "실제로 선택된 가중치 형식" |
-| 비교표 | 정확도 · engine 크기 · B=1 median/p95 · B=32 images/s (PyTorch FP32 + TensorRT 4종) |
-| trtexec 교차 확인 | 한 모드 이상, GPU Compute Time과 eval_engine.py median 비교 |
-| 해석 | ① 런타임 효과(PyTorch → TRT FP32) ② precision 효과(FP32 → FP16 → INT8) ③ `int8` engine이 실제로 INT8이었는가 ④ INT8 정확도 손실 |
-| 환경 | 보드 기준 실험의 teamXX.json, 3.6 설치 확인 출력(torch 2.8.0 · TensorRT 10.3.0), 전력 모드 |
-
-## 11. 문제 해결
+## 10. 문제 해결
 
 **대부분의 오류는 가상환경이 꺼진 상태에서 실행해서 생긴다.** 먼저 프롬프트에 `(quant_env)`가 있는지, 현재 폴더가 `~/quantization_lab`인지 확인한다.
 
